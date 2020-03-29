@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "openwrt-composer"
+version = "0.1.0"
+description = "An OpenWRT firmware builder which takes input from a YAML manifest"
+authors = ["Jonathan G. Underwood <jonathan.underwood@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+click = "^7.0"
+"ruamel.yaml" = "^0.16.10"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[tool.poetry.scripts]
+owrt = 'openwrt_composer.main:build'
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
