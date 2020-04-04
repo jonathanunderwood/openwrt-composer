@@ -6,15 +6,13 @@ from pathlib import Path
 from typing import Dict, List
 
 import click
+import click_log
 from ruamel.yaml import YAML
 
 from . import podman
 
-logger = logging.getLogger()
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-logger.addHandler(ch)
+logger = logging.getLogger(__name__)
+click_log.basic_config()
 
 
 def load_yaml_file(filename: str) -> dict:
@@ -104,6 +102,7 @@ def create_package_list(packages: Dict[str, List]) -> str:
 
 
 @click.command()
+@click_log.simple_verbosity_option(logger)
 @click.argument("config_file")
 @click.argument("manifest_file")
 def build(config_file: str, manifest_file: str) -> None:
@@ -111,9 +110,6 @@ def build(config_file: str, manifest_file: str) -> None:
 
     config: dict = load_yaml_file(config_file)
     manifest: dict = load_yaml_file(manifest_file)
-
-    log_level: str = config.get("log_level", "INFO")
-    logger.setLevel(log_level.upper())
 
     work_dir = config.get("work_dir", os.path.join(os.getcwd(), "openwrt-composer"))
     work_dir = Path(work_dir)

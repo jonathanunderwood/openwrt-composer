@@ -8,6 +8,7 @@ authors = ["Jonathan G. Underwood <jonathan.underwood@gmail.com>"]
 python = "^3.7"
 click = "^7.0"
 "ruamel.yaml" = "^0.16.10"
+click-log = "^0.3.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
