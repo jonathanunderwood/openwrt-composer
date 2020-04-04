@@ -138,9 +138,10 @@ def build(config_file: str, manifest_file: str) -> None:
     except IOError as exc:
         logger.exception("Failed to create build directory.")
         sys.exit(exc.errno)
+    else:
+        logger.info(f"Created build directory: {build_dir.absolute()}.")
 
     build_dir = Path(build_dir)
-    logger.info(f"Created build directory: {build_dir.absolute()}.")
 
     # Set up files and output directories under the build directory
     files_dir: Path = build_dir / "files"
@@ -162,7 +163,7 @@ def build(config_file: str, manifest_file: str) -> None:
             path = files_dir / Path(file["path"]).relative_to("/")
             contents = file["contents"]
         except KeyError as exc:
-            logger.exception(f"Missing key for file: {exc.args[0]}")
+            logger.exception(f"Missing key for file: {exc.args[0]}.")
             os.rmdir(files_dir)
             sys.exit(1)
 
@@ -176,7 +177,7 @@ def build(config_file: str, manifest_file: str) -> None:
             with open(path, mode="w") as fp:
                 fp.write(contents)
         except IOError as exc:
-            logger.exception(f"Failed to write to file: {path.absolute()}")
+            logger.exception(f"Failed to write to file: {path.absolute()}.")
             sys.exit(exc.errno)
 
     # Build firmwares
@@ -187,9 +188,9 @@ def build(config_file: str, manifest_file: str) -> None:
         sub_target = target_dict["sub_target"]
         profile = target_dict["profile"]
         logger.info("Building firmware:")
-        logger.info(f"    Target: {target}")
-        logger.info(f"    Sub-target: {sub_target}")
-        logger.info(f"    Profile: {profile}")
+        logger.info(f"    Target: {target}.")
+        logger.info(f"    Sub-target: {sub_target}.")
+        logger.info(f"    Profile: {profile}.")
 
         builder = podman.PodmanBuilder(
             version=version,
@@ -201,7 +202,7 @@ def build(config_file: str, manifest_file: str) -> None:
         )
 
         builder.build_firmware(packages, output_dir, files_dir)
-        logger.info(f"Firmware written to: {output_dir.absolute()}")
+        logger.info(f"Firmware written to: {output_dir.absolute()}.")
 
 
 if __name__ == "__main__":
