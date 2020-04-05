@@ -24,7 +24,7 @@ def _prepare_context_dir(
 
     Raises:
         RuntimeError: Raised if the `context_dir` exists but is not a directory.
-        OSError; Raised if creating the `context_dir` fails.
+        OSError: Raised if creating the `context_dir` fails.
 
     """
     if context_dir.exists():
