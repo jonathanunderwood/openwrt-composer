@@ -112,7 +112,8 @@ class Builder(ABC):
             image.
         target: The target architecture for this firmware builder.
         sub_target: The architecture sub-target for this firmware builder.
-        workdir: The directory that will be used by this builder for storing files.
+        profile: The device profile for this firmware builder.
+        work_dir: The directory that will be used by this builder for storing files.
         openwrt_base_url: The base URL for OpenWRT firmware builder archives.
 
     """
@@ -177,9 +178,9 @@ class Builder(ABC):
     def _retrieve_builder_archive(self) -> None:
         """Retrieve OpenWRT builder archive
 
-        The file is stored in the context directory suitable for building the builder
-        image. If the builder archive is already present in the builder context, then
-        the retrieval is skipped.
+        The file is stored in the context directory suitable for building the firmware
+        builder image. If the builder archive is already present in the builder context,
+        then the retrieval is skipped.
 
         """
         builder_archive = self._builder_context_dir / self._archive_file
@@ -238,7 +239,13 @@ class Builder(ABC):
     def _build_firmware(
         self, build_cmd: List[str], output_dir: Path, files_dir: Optional[Path]
     ) -> None:
-        """Build a firmware image"""
+        """Build a firmware image
+
+        Args:
+            build_cmd: Firmware build command line with arguments.
+            output_dir: Path to directory for writing the resulting firmware to.
+            files_dir: Path to directory containing files to include in the firmware.
+        """
 
         pass
 
@@ -249,6 +256,12 @@ class Builder(ABC):
         files_dir: Optional[Path] = None,
     ) -> None:
         """Build a firmware image
+
+        Args:
+            output_dir: Path to directory for writing the resulting firmware to.
+            packages: Optional string specifying packages to include or remove from the
+                firmware image.
+            files_dir: Path to directory containing files to include in the firmware.
 
         """
 
