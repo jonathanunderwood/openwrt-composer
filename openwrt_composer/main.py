@@ -43,41 +43,44 @@ def load_yaml_file(filename: str) -> dict:
     return d
 
 
-# def _firmware_build_setup_files(self, files: List[Dict[str, str]]) -> Path:
-#     """Write files to disk for firmware building
+def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
+    """Write files to disk for firmware building
 
-#     Args:
-#         files: A list of dictionaries. Each list item must have a ``path`` key and
-#             a ``contents`` key. The ``path`` key defines where in the firmware
-#             image the file should be placed. The ``contents`` key specifies the
-#             contents of the file.
+    Args:
+        files: A list of dictionaries. Each list item must have a ``path`` key and
+            a ``contents`` key. The ``path`` key defines where in the firmware
+            image the file should be placed. The ``contents`` key specifies the
+            contents of the file.
 
-#     Returns:
-#         The Path to the directory containing the files.
+    Returns:
+        The Path to the directory containing the files.
 
-#     Raises:
-#         KeyError: Raised if a files dict is missing a key.
-#         IOError: Raised if an error occurs creating a file.
+    Raises:
+        KeyError: Raised if a files dict is missing a key.
+        IOError: Raised if an error occurs creating a file.
 
-#     """
+    """
 
-#     dir: Path = tempfile.mkdtemp(prefix="files-", dir=self.workdir)
+    for file in files:
+        try:
+            path = files_dir / Path(file["path"]).relative_to("/")
+            contents = file["contents"]
+        except KeyError as exc:
+            logger.exception(f"Missing key for file: {exc.args[0]}.")
+            raise
 
-#     for file in files:
-#         try:
-#             path = dir / file["path"]
-#             with open(path, mode="w") as fp:
-#                 fp.write(file["contents"])
-#         except KeyError as exc:
-#             logger.error(f"Missing key for file: {exc.args[0]}")
-#             os.rmdir(dir)
-#             raise
-#         except IOError:
-#             logger.error(f"Failed to write to file: {path}")
-#             os.rmdir(dir)
-#             raise
+        path.parents[0].mkdir(parents=True, exist_ok=True)
 
-#     return dir
+        logger.debug(f"Writing file: {path}")
+        logger.debug("Contents:")
+        logger.debug(contents)
+
+        try:
+            with open(path, mode="w") as fp:
+                fp.write(contents)
+        except IOError:
+            logger.exception(f"Failed to write to file: {path.absolute()}.")
+            raise
 
 
 def create_package_list(packages: Dict[str, List]) -> str:
@@ -139,7 +142,7 @@ def build(config_file: str, manifest_file: str) -> None:
         logger.exception("Failed to create build directory.")
         sys.exit(exc.errno)
     else:
-        logger.info(f"Created build directory: {build_dir.absolute()}.")
+        logger.info(f"Created build directory: {Path(build_dir).absolute()}.")
 
     build_dir = Path(build_dir)
 
@@ -158,27 +161,14 @@ def build(config_file: str, manifest_file: str) -> None:
 
     # Create files for inclusion in firmware
     files = manifest.get("files", [])
-    for file in files:
-        try:
-            path = files_dir / Path(file["path"]).relative_to("/")
-            contents = file["contents"]
-        except KeyError as exc:
-            logger.exception(f"Missing key for file: {exc.args[0]}.")
-            os.rmdir(files_dir)
-            sys.exit(1)
 
-        path.parents[0].mkdir(parents=True, exist_ok=True)
-
-        logger.debug(f"Writing file: {path}")
-        logger.debug("Contents:")
-        logger.debug(contents)
-
-        try:
-            with open(path, mode="w") as fp:
-                fp.write(contents)
-        except IOError as exc:
-            logger.exception(f"Failed to write to file: {path.absolute()}.")
-            sys.exit(exc.errno)
+    try:
+        create_files(files, files_dir)
+    except (IOError, KeyError) as exc:
+        logger.exception("Failed to create files for firmware.")
+        files_dir.rmdir()
+        output_dir.rmdir()
+        sys.exit(exc.errno)
 
     # Build firmwares
     openwrt_base_url = config.get("openwrt_base_url", "https://downloads.openwrt.org/")
