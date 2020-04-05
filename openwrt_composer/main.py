@@ -34,6 +34,9 @@ def load_yaml_file(filename: str) -> dict:
     try:
         with open(filename) as fp:
             d = yaml.load(fp)
+            logger.info(f"File read: {filename}")
+            logger.debug(f"Contents:")
+            logger.debug(f"{d}")
     except IOError as exc:
         logger.excception(
             "I/O error({0}) loading {1}: {2}".format(exc.errno, filename, exc.strerror)
@@ -99,9 +102,13 @@ def create_package_list(packages: Dict[str, List]) -> str:
     """
     packages_add: List[str] = packages.get("add", [])
     packages_remove: List[str] = packages.get("remove", [])
-    packages: List[str] = packages_add + ["-{0}".format(pkg) for pkg in packages_remove]
+    packages_list: List[str] = packages_add + [
+        "-{0}".format(pkg) for pkg in packages_remove
+    ]
+    packages: str = " ".join(packages_list)
+    logger.debug("Packages list: {packages}")
 
-    return " ".join(packages)
+    return packages
 
 
 @click.command()
