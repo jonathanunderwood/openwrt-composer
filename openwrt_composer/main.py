@@ -162,7 +162,7 @@ def build(config_file: str, manifest_file: str) -> None:
         try:
             packages = create_package_list(fw["packages"])
         except KeyError:
-            packages = ""
+            packages = None
 
         # Set up files and output directories under the build directory
         files_dir: Path = build_dir / target / sub_target / profile / "files"

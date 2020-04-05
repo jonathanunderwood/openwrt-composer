@@ -241,7 +241,10 @@ class Builder(ABC):
         pass
 
     def build_firmware(
-        self, packages: str, output_dir: Path, files_dir: Optional[Path]
+        self,
+        output_dir: Path,
+        packages: Optional[str] = None,
+        files_dir: Optional[Path] = None,
     ) -> None:
         """Build a firmware image
 
@@ -271,9 +274,11 @@ class Builder(ABC):
             "make",
             "image",
             f"PROFILE={self.profile}",
-            f"PACKAGES={packages}",
             "BIN_DIR=/openwrt/result",
         ]
+
+        if packages is not None:
+            build_cmd.append(f"PACKAGES={packages}")
 
         if files_dir is not None:
             build_cmd.append(f"FILES=/openwrt/files")
