@@ -123,19 +123,7 @@ def build(config_file: str, manifest_file: str) -> None:
         logger.exception(f"Failed to create work directory: {work_dir.absolute()}")
         sys.exit(exc.errno)
 
-    try:
-        version = manifest["version"]
-    except KeyError as exc:
-        logger.exception("Missing value in manifest: release")
-        sys.exit(exc.errno)
-
-    try:
-        packages = create_package_list(manifest["packages"])
-    except KeyError:
-        packages = []
-
     # Create a build directory for each firmware run
-    logger.info(f"Creating build directory.")
     try:
         build_dir = tempfile.mkdtemp(prefix="build-", dir=work_dir)
     except IOError as exc:
@@ -146,41 +134,59 @@ def build(config_file: str, manifest_file: str) -> None:
 
     build_dir = Path(build_dir)
 
-    # Set up files and output directories under the build directory
-    files_dir: Path = build_dir / "files"
-    output_dir: Path = build_dir / "firmware"
-
-    for directory in [files_dir, output_dir]:
-        try:
-            directory.mkdir()
-        except IOError as exc:
-            logger.exception(f"Failed to create directory {directory.absolute()}.")
-            sys.exit(exc.errno)
-        else:
-            logger.info(f"Created directory: {directory.absolute()}.")
-
-    # Create files for inclusion in firmware
-    files = manifest.get("files", [])
-
-    try:
-        create_files(files, files_dir)
-    except (IOError, KeyError) as exc:
-        logger.exception("Failed to create files for firmware.")
-        files_dir.rmdir()
-        output_dir.rmdir()
-        sys.exit(exc.errno)
-
     # Build firmwares
     openwrt_base_url = config.get("openwrt_base_url", "https://downloads.openwrt.org/")
 
-    for target_dict in manifest["targets"]:
-        target = target_dict["target"]
-        sub_target = target_dict["sub_target"]
-        profile = target_dict["profile"]
+    try:
+        firmwares = manifest["firmwares"]
+    except KeyError as exc:
+        logger.error("No firmwares specified")
+        sys.excit(exc.errno)
+
+    for fw in firmwares:
+        try:
+            target = fw["target"]
+            sub_target = fw["sub_target"]
+            profile = fw["profile"]
+            version = fw["version"]
+        except KeyError as exc:
+            logger.exception(f"Missing value in manifest: {exc.args[0]}")
+            sys.exit(exc.errno)
+
         logger.info("Building firmware:")
         logger.info(f"    Target: {target}.")
         logger.info(f"    Sub-target: {sub_target}.")
         logger.info(f"    Profile: {profile}.")
+        logger.info(f"    OpenWRT version: {version}.")
+
+        try:
+            packages = create_package_list(fw["packages"])
+        except KeyError:
+            packages = ""
+
+        # Set up files and output directories under the build directory
+        files_dir: Path = build_dir / target / sub_target / profile / "files"
+        output_dir: Path = build_dir / target / sub_target / profile / "firmware"
+
+        for directory in [files_dir, output_dir]:
+            try:
+                directory.mkdir(parents=True)
+            except IOError as exc:
+                logger.exception(f"Failed to create directory {directory.absolute()}.")
+                sys.exit(exc.errno)
+            else:
+                logger.info(f"Created directory: {directory.absolute()}.")
+
+        # Create files for inclusion in firmware
+        files = fw.get("files", [])
+
+        try:
+            create_files(files, files_dir)
+        except (IOError, KeyError) as exc:
+            logger.exception("Failed to create files for firmware.")
+            files_dir.rmdir()
+            output_dir.rmdir()
+            sys.exit(exc.errno)
 
         builder = podman.PodmanBuilder(
             version=version,
@@ -191,8 +197,13 @@ def build(config_file: str, manifest_file: str) -> None:
             openwrt_base_url=openwrt_base_url,
         )
 
-        builder.build_firmware(packages, output_dir, files_dir)
-        logger.info(f"Firmware written to: {output_dir.absolute()}.")
+        try:
+            builder.build_firmware(packages, output_dir, files_dir)
+        except Exception as exc:
+            logger.exception("Failed to build firmware")
+            sys.exit(exc.errno)
+        else:
+            logger.info(f"Firmware written to: {output_dir.absolute()}.")
 
 
 if __name__ == "__main__":
