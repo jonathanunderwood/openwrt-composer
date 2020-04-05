@@ -18,8 +18,8 @@ def _prepare_context_dir(
 
     Args:
         context_dir: The Path of the context directory to create and prepare.
-        container_file: The contents of the Containerfile to create.
-        files: A dictionary for files to create in the context directory. The
+        containerfile: The contents of the Containerfile to create.
+        files: A dictionary of files to create in the context directory. The
             dictionary keys are the filenames, and the values are the contents.
 
     Raises:
