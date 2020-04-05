@@ -42,12 +42,16 @@ def _prepare_context_dir(
 
     logger.info(f"Creating {context_dir}/Containerfile")
     with open(context_dir / "Containerfile", "w") as fp:
+        logger.debug("Containerfile contents:")
+        logger.debug(containerfile)
         fp.write(containerfile)
 
     if files is not None:
         for file, contents in files.items():
             logger.info(f"Creating {context_dir/file}")
             with open(context_dir / file, "w") as fp:
+                logger.debug("Contents:")
+                logger.debug(contents)
                 fp.write(contents)
 
 
