@@ -1,7 +1,5 @@
 """Abstract base class and helpers for firmware building classes"""
 import logging
-import os
-import tempfile
 import textwrap
 from abc import ABC, abstractmethod
 from pathlib import Path
