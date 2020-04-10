@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 def _prepare_context_dir(
