@@ -44,7 +44,12 @@ class PodmanBuilder(Builder):
         )
 
     def _create_base_image(self):
-        """Create base image for all builders"""
+        """Create base image for all firmware builder images
+
+        Raises:
+            RunetimeError: Raised if the build fails.
+
+        """
 
         out = subprocess.run(
             ["podman", "build", "-t", self._base_image_tag, "."],
@@ -94,7 +99,12 @@ class PodmanBuilder(Builder):
         return not self._image_exists(self._builder_image_tag)
 
     def _create_builder_image(self):
-        """Create builder image"""
+        """Create firmware builder image
+
+        Raises:
+            RuntimeError: Raised if the image build fails.
+
+        """
 
         out = subprocess.run(
             ["podman", "build", "-t", self._builder_image_tag, "."],
@@ -114,7 +124,18 @@ class PodmanBuilder(Builder):
     def _build_firmware(
         self, build_cmd: List[str], output_dir: Path, files_dir: Optional[Path] = None,
     ):
-        """Build firmware image"""
+        """Build firmware image
+
+        Args:
+            build_cmd: The OpenWRT builder command line to build the firmware image.
+            output_dir: Directory where the resulting firmware image files will be
+                written.
+            files_dir: Directory containing files to be included in the firmware image.
+
+        Raises:
+            RuntimeError: Raised if the firmware build fails.
+
+        """
 
         podman_cmd = [
             "podman",
