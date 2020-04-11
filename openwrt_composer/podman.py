@@ -9,12 +9,8 @@
 
 import logging
 import subprocess
-import textwrap
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import urljoin
-
-import requests
 
 from .builder import Builder
 
