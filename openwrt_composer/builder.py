@@ -254,6 +254,7 @@ class Builder(ABC):
         output_dir: Path,
         packages: Optional[str] = None,
         files_dir: Optional[Path] = None,
+        extra_name: Optional[str] = None,
     ) -> None:
         """Build a firmware image
 
@@ -262,6 +263,7 @@ class Builder(ABC):
             packages: Optional string specifying packages to include or remove from the
                 firmware image.
             files_dir: Path to directory containing files to include in the firmware.
+            extra_name: Extra name to embed in the firmware image file name.
 
         """
 
@@ -296,6 +298,9 @@ class Builder(ABC):
             build_cmd.append(f"PACKAGES={packages}")
 
         if files_dir is not None:
-            build_cmd.append(f"FILES=/openwrt/files")
+            build_cmd.append("FILES=/openwrt/files")
+
+        if extra_name is not None:
+            build_cmd.append(f"EXTRA_IMAGE_NAME={extra_name}")
 
         self._build_firmware(build_cmd, output_dir, files_dir)

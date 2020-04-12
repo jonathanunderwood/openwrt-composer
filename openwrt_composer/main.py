@@ -46,6 +46,50 @@ def load_yaml_file(filename: str) -> dict:
     return d
 
 
+def valid_manifest(manifest: dict):
+    """Perform some sanity checks on the manifest
+
+    Currently this checks:
+
+    - That each (target, sub_target, profile, version, name) is unique so that firmwares
+      are not overwritten.
+
+    Args:
+        manifest: A dictionary resulting from parsing the manifest file.
+
+    Returns:
+        ``True`` if the manifest is valid, ``False`` otherwise.
+
+    Raises:
+        KeyError: Raised if any firmware specified lacks ``target``, ``sub_target``,
+            ``profile`` or ``version`` fields.
+    """
+    try:
+        firmwares = [
+            (
+                f["target"],
+                f["sub_target"],
+                f["profile"],
+                f["version"],
+                f.get("name", None),
+            )
+            for f in manifest["firmwares"]
+        ]
+    except KeyError as exc:
+        logger.exception(f"Missing field in manifest: {exc.args[0]}")
+        return False
+
+    # dupes = [f for f in set(firmwares) if firmwares.count(f) > 1]
+    seen = set()
+    dupes = set(f for f in firmwares if f in seen or seen.add(f))
+
+    if len(dupes) > 0:
+        logger.error(f"Duplicate firmwares specified: {dupes}")
+        return False
+
+    return True
+
+
 def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
     """Write files to disk for firmware building
 
@@ -121,6 +165,10 @@ def build(config_file: str, manifest_file: str) -> None:
     config: dict = load_yaml_file(config_file)
     manifest: dict = load_yaml_file(manifest_file)
 
+    if not valid_manifest(manifest):
+        logger.error("Manifest not valid. Exiting.")
+        sys.exit(1)
+
     work_dir = config.get("work_dir", os.path.join(os.getcwd(), "openwrt-composer"))
     work_dir = Path(work_dir)
 
@@ -167,6 +215,13 @@ def build(config_file: str, manifest_file: str) -> None:
         logger.info(f"    OpenWRT version: {version}.")
 
         try:
+            extra_name = fw["name"]
+        except KeyError:
+            extra_name = None
+
+        logger.info(f"    Name: {extra_name or '<None>'}.")
+
+        try:
             packages = create_package_list(fw["packages"])
         except KeyError:
             packages = None
@@ -205,7 +260,7 @@ def build(config_file: str, manifest_file: str) -> None:
         )
 
         try:
-            builder.build_firmware(packages, output_dir, files_dir)
+            builder.build_firmware(output_dir, packages, files_dir, extra_name)
         except Exception as exc:
             logger.exception("Failed to build firmware")
             sys.exit(exc.errno)
