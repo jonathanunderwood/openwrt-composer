@@ -228,10 +228,11 @@ def build(config_file: str, manifest_file: str) -> None:
             packages = None
 
         # Set up files and output directories under the build directory
-        files_dir: Path = build_dir / target / sub_target / profile / "files"
-        output_dir: Path = build_dir / target / sub_target / profile / "firmware"
+        base_dir: Path = build_dir / target / sub_target / profile / extra_name
+        files_dir: Path = base_dir / "files"
+        output_dir: Path = base_dir / "firmware"
 
-        for directory in [files_dir, output_dir]:
+        for directory in [base_dir, files_dir, output_dir]:
             try:
                 directory.mkdir(parents=True)
             except IOError as exc:
