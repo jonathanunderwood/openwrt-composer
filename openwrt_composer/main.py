@@ -10,6 +10,7 @@ import click_log
 from ruamel.yaml import YAML
 
 from . import podman
+from .exceptions import FirmwareBuildFailure
 
 logger = logging.getLogger(__name__)
 click_log.basic_config()
@@ -261,7 +262,7 @@ def build(config_file: str, manifest_file: str) -> None:
 
         try:
             builder.build_firmware(output_dir, packages, files_dir, extra_name)
-        except Exception as exc:
+        except FirmwareBuildFailure as exc:
             logger.exception("Failed to build firmware")
             sys.exit(exc.errno)
         else:

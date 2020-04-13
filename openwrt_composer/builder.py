@@ -8,6 +8,9 @@ from urllib.parse import urljoin
 
 import requests
 
+from .exceptions import (ContextDirectoryCreationFailure,
+                         ImageBuilderRetrievalFailure)
+
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -31,14 +34,15 @@ def _prepare_context_dir(
         if not context_dir.is_dir():
             msg = "Context exists but is not a directory: {context_dir}"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise ContextDirectoryCreationFailure(msg)
     else:
         try:
             logger.info(f"Creating context directory: {context_dir}")
             context_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
-            logger.exception(f"Failed to create directory: {context_dir}")
-            raise
+            msg = f"Failed to create directory: {context_dir}"
+            logger.exception(msg)
+            raise ContextDirectoryCreationFailure(msg)
 
     logger.info(f"Creating {context_dir}/Containerfile")
     with open(context_dir / "Containerfile", "w") as fp:
@@ -176,11 +180,15 @@ class Builder(ABC):
         )
 
     def _retrieve_builder_archive(self) -> None:
-        """Retrieve OpenWRT builder archive
+        """Retrieve OpenWRT image builder archive
 
         The file is stored in the context directory suitable for building the firmware
         builder image. If the builder archive is already present in the builder context,
         then the retrieval is skipped.
+
+        Raises:
+            ImageBuilderRetrievalFailure: Raised if retrieving the builder archive
+                fails.
 
         """
         builder_archive = self._builder_context_dir / self._archive_file
@@ -201,8 +209,9 @@ class Builder(ABC):
                         fp.write(block)
                         fp.flush()
         else:
-            logger.error(f"Failed to retrieve {url}")
-            raise RuntimeError
+            msg = f"Failed to retrieve {url}"
+            logger.error(msg)
+            raise ImageBuilderRetrievalFailure(msg)
 
     @abstractmethod
     def _create_base_image(self) -> None:

@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import List, Optional
 
 from .builder import Builder
+from .exceptions import (
+    BaseImageBuildFailure,
+    BuilderImageBuildFailure,
+    FirmwareBuildFailure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +52,7 @@ class PodmanBuilder(Builder):
         """Create base image for all firmware builder images
 
         Raises:
-            RunetimeError: Raised if the build fails.
+            BaseImageBuildFailure: Raised if the build fails.
 
         """
 
@@ -64,7 +69,7 @@ class PodmanBuilder(Builder):
         if out.returncode != 0:
             msg = "Failed to build base builder image"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise BaseImageBuildFailure(msg)
 
     def _image_exists(self, tag: str):
         """Check that image exists for a given tag
@@ -102,7 +107,7 @@ class PodmanBuilder(Builder):
         """Create firmware builder image
 
         Raises:
-            RuntimeError: Raised if the image build fails.
+            BuilderImageBuildFailure: Raised if the image build fails.
 
         """
 
@@ -119,7 +124,7 @@ class PodmanBuilder(Builder):
         if out.returncode != 0:
             msg = f"Failed to build builder image: {self._builder_image_tag}"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise BuilderImageBuildFailure(msg)
 
     def _build_firmware(
         self, build_cmd: List[str], output_dir: Path, files_dir: Optional[Path] = None,
@@ -133,7 +138,7 @@ class PodmanBuilder(Builder):
             files_dir: Directory containing files to be included in the firmware image.
 
         Raises:
-            RuntimeError: Raised if the firmware build fails.
+            FirmwareBuildFailure: Raised if the firmware build fails.
 
         """
 
@@ -166,4 +171,4 @@ class PodmanBuilder(Builder):
             logger.error(out.stdout)
             logger.error(out.stderr)
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise FirmwareBuildFailure(msg)
