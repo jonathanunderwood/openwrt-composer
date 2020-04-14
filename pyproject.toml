@@ -10,6 +10,7 @@ click = "^7.0"
 "ruamel.yaml" = "^0.16.10"
 click-log = "^0.3.2"
 requests = "^2.23.0"
+netjsonconfig = "^0.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
