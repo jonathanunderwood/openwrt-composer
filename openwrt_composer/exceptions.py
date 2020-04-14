@@ -27,3 +27,7 @@ class ImageBuilderRetrievalFailure(Exception):
 
 class ContextDirectoryCreationFailure(Exception):
     """Raised when creating a context directory for an image build fails"""
+
+
+class ConfigCreationError(Exception):
+    """Raised when an error occurs creating config files"""
