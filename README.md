@@ -112,8 +112,17 @@ firmwares:
 
 The mechanism by which these files end up in the firmware is that
 `openwrt-composer` writes them to disk and then passes them as the `FILES`
-argument when invoking the OpenWRT image builder. A short (incomplete) examples
-is shown below:
+argument when invoking the OpenWRT image builder. 
+
+
+#### Option 2: using the `config` section in the manifest
+
+The `config` section of a firmware image specification is passed through
+[NetJSONConfig](http://netjsonconfig.openwisp.org/en/latest/) to produce a set
+of configuration files which are then included in the firmware image via the
+`FILES` argument of the OpenWRT Image Builder.
+
+A short (incomplete) example is shown below:
 
 ```yaml
 firmwares:
@@ -138,16 +147,6 @@ firmwares:
           keepalive: 3
           ipv6: True
 ```
-
-
-#### Option 2: using the `config` section in the manifest
-
-The `config` section of a firmware image specification is passed through
-[NetJSONConfig](http://netjsonconfig.openwisp.org/en/latest/) to produce a set
-of configuration files which are then included in the firmware image via the
-`FILES` argument of the OpenWRT Image Builder.
-
-
 
 Note: Since the NetJSONConfig specification allows the [inclusion of additional
 files](http://netjsonconfig.openwisp.org/en/latest/backends/openwrt.html#including-additional-files),
