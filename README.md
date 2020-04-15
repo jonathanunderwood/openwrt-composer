@@ -42,6 +42,21 @@ firmware. That makes it very easy to share and collaborate firmware
 configurations.
 
 
+## Installation
+
+In the future, the package will be available from [PyPi](https://pypi.org).
+However, at the moment, you'll need to clone this repository, and then install
+it via [poetry](https://python-poetry.org). It is recommended to do this in a
+Python virtual environment:
+
+```bash
+python -m venv openwrt-composer
+pip install poetry
+poetry install
+```
+
+It's recommended to install the package in a 
+
 ## Usage
 
 The command line tool is `owc`:
