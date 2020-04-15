@@ -42,11 +42,14 @@ class OpenWrtConfig(OpenWrt):
 
             path: Path = files_dir / config_path / package_name
             if path.exists():
-                msg = f"Error writing to {path}: file already exists"
+                msg = f"Error writing to {path.absolute()}: file already exists"
                 logger.error(msg)
                 raise ConfigCreationError(msg)
 
-            with open(path.absolute(), "w") as fp:
-                fp.write(contents)
-                logger.info(f"File written: {path}")
-                logger.debug(contents)
+            try:
+                with open(path.absolute(), "w") as fp:
+                    fp.write(contents)
+                    logger.info(f"File written: {path.absolute()}")
+                    logger.debug(contents)
+            except IOError:
+                logger.error(f"Failed to write to file: {path.absolute()}")
