@@ -10,7 +10,8 @@ import click_log
 from ruamel.yaml import YAML
 
 from . import podman
-from .exceptions import FirmwareBuildFailure
+from .exceptions import ConfigCreationError, FirmwareBuildFailure
+from .netjsonconfig import OpenWrtConfig
 
 logger = logging.getLogger(__name__)
 click_log.basic_config()
@@ -106,28 +107,44 @@ def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
     Raises:
         KeyError: Raised if a files dict is missing a key.
         IOError: Raised if an error occurs creating a file.
+        ConfigCreationError: Raised if `files_dir` does not exist, of if a file that
+            would be created already exists.
 
     """
+
+    if not files_dir.is_dir():
+        msg = f"{files_dir.absolute()} does not exist"
+        logger.error(msg)
+        raise ConfigCreationError(msg)
 
     for file in files:
         try:
             path = files_dir / Path(file["path"]).relative_to("/")
             contents = file["contents"]
         except KeyError as exc:
-            logger.exception(f"Missing key for file: {exc.args[0]}.")
+            logger.exception(f"Missing key for file: {exc.args[0]}")
             raise
 
-        path.parents[0].mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            msg = f"Error writing to {path.absolute()}: file already exists"
+            logger.error(msg)
+            raise ConfigCreationError(msg)
 
-        logger.debug(f"Writing file: {path}")
-        logger.debug("Contents:")
-        logger.debug(contents)
+        parent = path.parents[0]
+        try:
+            parent.mkdir(parents=True)
+        except IOError:
+            logger.exception(f"Failed to create parent directory; {parent}")
+            raise ConfigCreationError
 
         try:
             with open(path, mode="w") as fp:
                 fp.write(contents)
+                logger.debug(f"File written: {path.absolute()}")
+                logger.debug("Contents:")
+                logger.debug(contents)
         except IOError:
-            logger.exception(f"Failed to write to file: {path.absolute()}.")
+            logger.exception(f"Failed to write to file: {path.absolute()}")
             raise
 
 
@@ -151,7 +168,6 @@ def create_package_list(packages: Dict[str, List]) -> str:
         "-{0}".format(pkg) for pkg in packages_remove
     ]
     packages: str = " ".join(packages_list)
-    logger.debug("Packages list: {packages}")
 
     return packages
 
@@ -167,7 +183,7 @@ def build(config_file: str, manifest_file: str) -> None:
     manifest: dict = load_yaml_file(manifest_file)
 
     if not valid_manifest(manifest):
-        logger.error("Manifest not valid. Exiting.")
+        logger.error("Manifest not valid. Exiting")
         sys.exit(1)
 
     work_dir = config.get("work_dir", os.path.join(os.getcwd(), "openwrt-composer"))
@@ -183,10 +199,10 @@ def build(config_file: str, manifest_file: str) -> None:
     try:
         build_dir = tempfile.mkdtemp(prefix="build-", dir=work_dir)
     except IOError as exc:
-        logger.exception("Failed to create build directory.")
+        logger.exception("Failed to create build directory")
         sys.exit(exc.errno)
     else:
-        logger.info(f"Created build directory: {Path(build_dir).absolute()}.")
+        logger.info(f"Created build directory: {Path(build_dir).absolute()}")
 
     build_dir = Path(build_dir)
 
@@ -210,22 +226,24 @@ def build(config_file: str, manifest_file: str) -> None:
             sys.exit(exc.errno)
 
         logger.info("Building firmware:")
-        logger.info(f"    Target: {target}.")
-        logger.info(f"    Sub-target: {sub_target}.")
-        logger.info(f"    Profile: {profile}.")
-        logger.info(f"    OpenWRT version: {version}.")
+        logger.info(f"    Target: {target}")
+        logger.info(f"    Sub-target: {sub_target}")
+        logger.info(f"    Profile: {profile}")
+        logger.info(f"    OpenWRT version: {version}")
 
         try:
             extra_name = fw["name"]
         except KeyError:
             extra_name = None
 
-        logger.info(f"    Name: {extra_name or '<None>'}.")
+        logger.info(f"    Name: {extra_name or '<None>'}")
 
         try:
             packages = create_package_list(fw["packages"])
+            logger.debug(f"Packages list: {packages}")
         except KeyError:
             packages = None
+            logger.debug("No packages specified in manifest")
 
         # Set up files and output directories under the build directory
         base_dir: Path = build_dir / target / sub_target / profile / extra_name
@@ -236,22 +254,39 @@ def build(config_file: str, manifest_file: str) -> None:
             try:
                 directory.mkdir(parents=True)
             except IOError as exc:
-                logger.exception(f"Failed to create directory {directory.absolute()}.")
+                logger.exception(f"Failed to create directory {directory.absolute()}")
                 sys.exit(exc.errno)
             else:
-                logger.info(f"Created directory: {directory.absolute()}.")
+                logger.info(f"Created directory: {directory.absolute()}")
 
         # Create files for inclusion in firmware
-        files = fw.get("files", [])
+        # 1. Create any files specified as literal file content from manifest
+        # 2. Create files corresponding to any NetJSONConfig section
+        files = fw.get("files", None)
 
-        try:
-            create_files(files, files_dir)
-        except (IOError, KeyError) as exc:
-            logger.exception("Failed to create files for firmware.")
-            files_dir.rmdir()
-            output_dir.rmdir()
-            sys.exit(exc.errno)
+        if files is not None:
+            logger.debug("Creating files from 'files' section of manifest")
+            try:
+                create_files(files, files_dir)
+            except (IOError, KeyError, ConfigCreationError):
+                logger.exception("Failed to create files for firmware")
+                sys.exit(1)
 
+        owrt_config = fw.get("config", None)
+
+        if owrt_config is not None:
+            logger.debug(
+                "Creating configuration files from 'config' section of manifest"
+            )
+            logger.debug(owrt_config)
+            cfg = OpenWrtConfig(owrt_config)
+            try:
+                cfg.create_files(files_dir)
+            except ConfigCreationError:
+                logger.exception("Failed to create config files for firmware")
+                sys.exit(1)
+
+        # Build the firmware
         builder = podman.PodmanBuilder(
             version=version,
             target=target,
@@ -267,7 +302,7 @@ def build(config_file: str, manifest_file: str) -> None:
             logger.exception("Failed to build firmware")
             sys.exit(exc.errno)
         else:
-            logger.info(f"Firmware written to: {output_dir.absolute()}.")
+            logger.info(f"Firmware written to: {output_dir.absolute()}")
 
 
 if __name__ == "__main__":

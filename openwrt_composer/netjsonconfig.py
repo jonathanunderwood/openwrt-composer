@@ -3,8 +3,9 @@ from pathlib import Path
 
 from netjsonconfig import OpenWrt
 from netjsonconfig.backends.openwrt.parser import config_path, packages_pattern
+from netjsonconfig.exceptions import ValidationError
 
-from .excpetions import ConfigCreationError
+from .exceptions import ConfigCreationError
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,18 @@ class OpenWrtConfig(OpenWrt):
         Args:
             files_dir: Directory to dump files to.
 
+        Raises:
+            ConfigCreationError: Raised if `files_dir` does not exist, of if a file that
+                would be created already exists.
+
         """
+        try:
+            self.validate()
+        except ValidationError:
+            msg = "Configuration failed to validate"
+            logger.exception(msg)
+            raise ConfigCreationError(msg)
+
         if not files_dir.is_dir():
             msg = f"{files_dir.absolute()} does not exist"
             logger.error(msg)
@@ -46,10 +58,20 @@ class OpenWrtConfig(OpenWrt):
                 logger.error(msg)
                 raise ConfigCreationError(msg)
 
+            parent = path.parents[0]
+            try:
+                parent.mkdir(parents=True)
+            except IOError:
+                logger.exception(f"Failed to create parent directory; {parent}")
+                raise ConfigCreationError
+
             try:
                 with open(path.absolute(), "w") as fp:
                     fp.write(contents)
                     logger.info(f"File written: {path.absolute()}")
+                    logger.debug("Contents:")
                     logger.debug(contents)
             except IOError:
-                logger.error(f"Failed to write to file: {path.absolute()}")
+                msg = f"Failed to write to file: {path.absolute()}"
+                logger.error(msg)
+                raise ConfigCreationError(msg)
