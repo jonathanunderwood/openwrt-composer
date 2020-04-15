@@ -2,8 +2,22 @@
 
 An OpenWRT firmware builder which takes input from a YAML manifest.
 
+OpenWRT composer takes a YAML manifest which specifies firmware images to build,
+including what packages to add/remove from the firmware, and how to configure
+the firmware. The idea is that the firmware image is regarded as immutable; any
+change in configuration is achieved by producing a new firmware image and
+loading that onto the device.
+
+Configuration is specified in the YAML manifest, and leverages the NetJSONConfig
+package to create valid configuration files which are then baked into the
+firmware image.
+
+Building of the image itself is done inside a container. Currently the Podman
+container runtime is used, but adding Docker support is on the TODO list, and
+wouldn't require much work at all.
+
 *This project is still under heavy development. It will probably build you a
-firmware that will turn your router into a brick.**
+firmware that will turn your router into a brick.*
 
 
 ## The concept
