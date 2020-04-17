@@ -287,9 +287,10 @@ def build(config_file: str, manifest_file: str) -> None:
                 sys.exit(1)
 
         fw_files = [str(f) for f in files_dir.glob("**/*")]
-        logger.info("Files to be included in firmware:")
-        for f in fw_files:
-            logger.info(f"    {f}")
+        if fw_files:
+            logger.info("Files to be included in firmware:")
+            for f in fw_files:
+                logger.info(f"    {f}")
 
         # Build the firmware
         builder = podman.PodmanBuilder(
