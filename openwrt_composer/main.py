@@ -173,7 +173,7 @@ def create_package_list(packages: Dict[str, List]) -> str:
 
 
 @click.command()
-@click_log.simple_verbosity_option(logger)
+@click_log.simple_verbosity_option()
 @click.argument("config_file")
 @click.argument("manifest_file")
 def build(config_file: str, manifest_file: str) -> None:
