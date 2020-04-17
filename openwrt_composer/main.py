@@ -304,9 +304,9 @@ def build(config_file: str, manifest_file: str) -> None:
 
         try:
             builder.build_firmware(output_dir, packages, files_dir, extra_name)
-        except FirmwareBuildFailure as exc:
+        except FirmwareBuildFailure:
             logger.exception("Failed to build firmware")
-            sys.exit(exc.errno)
+            sys.exit(1)
         else:
             logger.info(f"Firmware written to: {output_dir.absolute()}")
 
