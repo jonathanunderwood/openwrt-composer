@@ -118,7 +118,6 @@ class PodmanBuilder(Builder):
             stderr=subprocess.STDOUT,
             text=True,
         )
-        print(self._builder_context_dir.absolute())
         logger.info(out.stdout)
 
         if out.returncode != 0:
