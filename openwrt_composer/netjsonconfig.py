@@ -11,15 +11,53 @@ logger = logging.getLogger(__name__)
 
 
 class OpenWrtConfig(OpenWrt):
-    """NetJSONConfig handler for router configuration
+    """NetJSONConfig handler for router configuration.
 
-    This class inherits from `netjsonconfig.OpenWrt` and adds a method to dump the
-    configuration into files at a specified location.
+    This class inherits from `netjsonconfig.OpenWrt` and adds convenience methods to
+    dump the configuration.
 
     """
 
-    def create_files(self, files_dir: Path):
-        """Dump configuration files to a location
+    def create_sysupgrade_tarball(
+        self, archive_dir: Path, archive_name: str = "config"
+    ) -> None:
+        """Dump the configuration to a `sysupgrade` archive.
+
+        This method renders the configuration to UCI configuration files in a tarball
+        suitable for application suitable for use with `sysupgrade`.
+
+        Args:
+            archive_dir: Directory to write archive to.
+            archive_name: File name of the archive without .tar.gz ending. Defaults to
+                "config".
+
+        Raises:
+            ConfigCreationError: Raised if `files_dir` does not exist, of if a file that
+                would be created already exists.
+
+        """
+
+        try:
+            self.validate()
+        except ValidationError:
+            msg = "Configuration failed to validate"
+            logger.exception(msg)
+            raise ConfigCreationError(msg)
+
+        if not archive_dir.is_dir():
+            msg = f"{archive_dir.absolute()} does not exist"
+            logger.error(msg)
+            raise ConfigCreationError(msg)
+
+        self.write(archive_name, str(archive_dir.resolve()))
+        tarball = archive_dir / (archive_name + ".tar.gz")
+        logger.info(f"Wrote sysupgrade tarball: {str(tarball.resolve())}")
+
+    def create_files(self, files_dir: Path) -> None:
+        """Dump configuration files to a directory.
+
+        This method dumps the generated UCI configuration into files at a specified
+        location. Those files can then be included in a OpenWRT firmware image.
 
         Args:
             files_dir: Directory to dump files to.
@@ -29,6 +67,7 @@ class OpenWrtConfig(OpenWrt):
                 would be created already exists.
 
         """
+
         try:
             self.validate()
         except ValidationError:

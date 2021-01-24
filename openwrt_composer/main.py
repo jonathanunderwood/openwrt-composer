@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import click
 import click_log
@@ -18,7 +18,7 @@ click_log.basic_config()
 
 
 def load_yaml_file(filename: str) -> dict:
-    """Parse a YAML file and return a dictionary of contents
+    """Parse a YAML file and return a dictionary of contents.
 
     Args:
         filename: Name of file to parse.
@@ -48,13 +48,13 @@ def load_yaml_file(filename: str) -> dict:
     return d
 
 
-def valid_manifest(manifest: dict):
-    """Perform some sanity checks on the manifest
+def valid_manifest(manifest: dict) -> bool:
+    """Perform some sanity checks on the manifest.
 
     Currently this checks:
 
-    - That each (target, sub_target, profile, version, name) is unique so that firmwares
-      are not overwritten.
+        - That each (target, sub_target, profile, version, name) is unique so that
+          firmwares are not overwritten.
 
     Args:
         manifest: A dictionary resulting from parsing the manifest file.
@@ -65,6 +65,7 @@ def valid_manifest(manifest: dict):
     Raises:
         KeyError: Raised if any firmware specified lacks ``target``, ``sub_target``,
             ``profile`` or ``version`` fields.
+
     """
     try:
         firmwares = [
@@ -162,8 +163,16 @@ def create_package_list(packages: Dict[str, List]) -> str:
             building a firmware image with the OpenWRT firmware builder.
 
     """
-    packages_add: List[str] = packages.get("add", [])
-    packages_remove: List[str] = packages.get("remove", [])
+    packages_add: Optional[List[str]] = packages.get("add", [])
+    if packages_add is None:
+        # The section is empty, so set to empty list
+        packages_add = []
+
+    packages_remove: Optional[List[str]] = packages.get("remove", [])
+    if packages_remove is None:
+        # The section is empty, so set to empty list
+        packages_remove = []
+
     packages_list: List[str] = packages_add + [
         "-{0}".format(pkg) for pkg in packages_remove
     ]
@@ -176,7 +185,8 @@ def create_package_list(packages: Dict[str, List]) -> str:
 @click_log.simple_verbosity_option()
 @click.argument("config_file")
 @click.argument("manifest_file")
-def build(config_file: str, manifest_file: str) -> None:
+@click.option("--config-only", is_flag=True)
+def build(config_file: str, manifest_file: str, config_only: bool) -> None:
     """Build firmware images for a given manifest"""
 
     config: dict = load_yaml_file(config_file)
@@ -213,7 +223,7 @@ def build(config_file: str, manifest_file: str) -> None:
         firmwares = manifest["firmwares"]
     except KeyError as exc:
         logger.error("No firmwares specified")
-        sys.excit(exc.errno)
+        sys.exit(exc.errno)
 
     for fw in firmwares:
         try:
@@ -246,7 +256,10 @@ def build(config_file: str, manifest_file: str) -> None:
             logger.debug("No packages specified in manifest")
 
         # Set up files and output directories under the build directory
-        base_dir: Path = build_dir / target / sub_target / profile / extra_name
+        base_dir: Path = build_dir / target / sub_target / profile
+        if extra_name is not None:
+            base_dir = base_dir / extra_name
+
         files_dir: Path = base_dir / "files"
         output_dir: Path = base_dir / "firmware"
 
@@ -282,6 +295,9 @@ def build(config_file: str, manifest_file: str) -> None:
             cfg = OpenWrtConfig(owrt_config)
             try:
                 cfg.create_files(files_dir)
+                # Write tarball of NetJSONConfig generated config files to be used with
+                # sysupgrade
+                cfg.create_sysupgrade_tarball(output_dir)
             except ConfigCreationError:
                 logger.exception("Failed to create config files for firmware")
                 sys.exit(1)
@@ -293,22 +309,23 @@ def build(config_file: str, manifest_file: str) -> None:
                 logger.info(f"    {f}")
 
         # Build the firmware
-        builder = podman.PodmanBuilder(
-            version=version,
-            target=target,
-            sub_target=sub_target,
-            profile=profile,
-            work_dir=work_dir,
-            openwrt_base_url=openwrt_base_url,
-        )
+        if not config_only:
+            builder = podman.PodmanBuilder(
+                version=version,
+                target=target,
+                sub_target=sub_target,
+                profile=profile,
+                work_dir=work_dir,
+                openwrt_base_url=openwrt_base_url,
+            )
 
-        try:
-            builder.build_firmware(output_dir, packages, files_dir, extra_name)
-        except FirmwareBuildFailure:
-            logger.exception("Failed to build firmware")
-            sys.exit(1)
-        else:
-            logger.info(f"Firmware written to: {output_dir.absolute()}")
+            try:
+                builder.build_firmware(output_dir, packages, files_dir, extra_name)
+            except FirmwareBuildFailure:
+                logger.exception("Failed to build firmware")
+                sys.exit(1)
+            else:
+                logger.info(f"Firmware written to: {output_dir.absolute()}")
 
 
 if __name__ == "__main__":
