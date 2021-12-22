@@ -8,8 +8,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from .exceptions import (ContextDirectoryCreationFailure,
-                         ImageBuilderRetrievalFailure)
+from .exceptions import ContextDirectoryCreationFailure, ImageBuilderRetrievalFailure
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -138,7 +137,9 @@ class Builder(ABC):
         self.profile: str = profile
         self.work_dir: Path = work_dir
 
-        self._builder_image_tag: str = f"openwrt-builder-{version}-{target}-{sub_target}"  # noqa: E501
+        self._builder_image_tag: str = (
+            f"openwrt-builder-{version}-{target}-{sub_target}"  # noqa: E501
+        )
         self._base_image_tag = _BASE_IMAGE_TAG
 
         if not openwrt_base_url.endswith("/"):
