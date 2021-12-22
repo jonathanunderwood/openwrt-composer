@@ -126,7 +126,10 @@ class PodmanBuilder(Builder):
             raise BuilderImageBuildFailure(msg)
 
     def _build_firmware(
-        self, build_cmd: List[str], output_dir: Path, files_dir: Optional[Path] = None,
+        self,
+        build_cmd: List[str],
+        output_dir: Path,
+        files_dir: Optional[Path] = None,
     ):
         """Build firmware image
 
