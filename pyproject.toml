@@ -6,17 +6,19 @@ authors = ["Jonathan G. Underwood <jonathan.underwood@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-click = "^7.0"
-"ruamel.yaml" = "^0.16.10"
+click = "^8.0.3"
+"ruamel.yaml" = "^0.16.13"
 click-log = "^0.3.2"
-requests = "^2.23.0"
-netjsonconfig = "^0.8"
+requests = "^2.26.0"
+netjsonconfig = "^0.9.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
-black = "^19.10b0"
-tox = "^3.14.6"
-flake8 = "^3.7.9"
+pytest = "^6.2.5"
+black = "^21.12b0"
+tox = "^3.24.4"
+flake8 = "^4.0.1"
+poetryup = "^0.3.15"
+isort = "^5.10.1"
 
 [tool.poetry.scripts]
 owc = 'openwrt_composer.main:build'
