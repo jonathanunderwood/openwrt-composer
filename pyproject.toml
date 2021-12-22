@@ -27,3 +27,5 @@ owc = 'openwrt_composer.main:build'
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
 
+[tool.isort]
+profile = "black"
