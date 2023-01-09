@@ -11,13 +11,13 @@ click = "^8.0.3"
 click-log = "^0.3.2"
 requests = "^2.26.0"
 netjsonconfig = "^0.9.1"
+podman = {git = "https://github.com/jonathanunderwood/podman-py.git", rev = "integration"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
 black = "^21.12b0"
 tox = "^3.24.4"
 flake8 = "^4.0.1"
-poetryup = "^0.3.15"
 isort = "^5.10.1"
 
 [tool.poetry.scripts]
