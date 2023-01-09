@@ -5,19 +5,19 @@ description = "An OpenWRT firmware builder which takes input from a YAML manifes
 authors = ["Jonathan G. Underwood <jonathan.underwood@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.11"
 click = "^8.0.3"
-"ruamel.yaml" = "^0.16.13"
-click-log = "^0.3.2"
+"ruamel.yaml" = "^0.17.21"
+click-log = "^0.4.0"
 requests = "^2.26.0"
-netjsonconfig = "^0.9.1"
-podman = {git = "https://github.com/jonathanunderwood/podman-py.git", rev = "integration"}
+netjsonconfig = "^1.0.2"
+podman = {git = "https://github.com/jonathanunderwood/podman-py.git", rev = "main"}
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.5"
-black = "^21.12b0"
-tox = "^3.24.4"
-flake8 = "^4.0.1"
+pytest = "^7.2.0"
+black = "^23.1a1"
+tox = "^4.2.6"
+flake8 = "^6.0.0"
 isort = "^5.10.1"
 
 [tool.poetry.scripts]
