@@ -8,25 +8,37 @@
 # https://github.com/varlink/python/issues/23
 
 import logging
-import subprocess
 from pathlib import Path
 from typing import List, Optional
 
-from .builder import Builder
-from .exceptions import (
+from podman import PodmanClient
+from podman.errors import APIError, BuildError, ContainerError, ImageNotFound
+from requests.exceptions import RequestException
+
+from openwrt_composer.builder import Builder
+from openwrt_composer.exceptions import (
     BaseImageBuildFailure,
     BuilderImageBuildFailure,
     FirmwareBuildFailure,
+    OpenWRTComposerException,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+# FIXME: this is hard coded for now, but needs to be a configuration parameter
+uri = "unix:///run/user/1000/podman/podman.sock"
+
+
+class PodmanException(OpenWRTComposerException):
+    """Raised when a Podman operation fails."""
 
 
 class PodmanBuilder(Builder):
-    """A firmware builder class that uses Podman for building firmware images
+    """A firmware builder class that uses Podman.
 
-    This builder wraps the Podman CLI to do its work. When the Python bindings mature,
-    this class will use those bindings.
+    This firmware builder utilizes Podman to build firmware
+    images. Connectivity with Podman is via the REST API that Podman
+    provides.
 
     """
 
@@ -47,6 +59,7 @@ class PodmanBuilder(Builder):
             work_dir=work_dir,
             openwrt_base_url=openwrt_base_url,
         )
+        self.podman_uri = uri
 
     def _create_base_image(self):
         """Create base image for all firmware builder images
@@ -56,74 +69,86 @@ class PodmanBuilder(Builder):
 
         """
 
-        out = subprocess.run(
-            ["podman", "build", "-t", self._base_image_tag, "."],
-            cwd=self._base_context_dir.absolute(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-
-        logger.info(out.stdout)
-
-        if out.returncode != 0:
-            msg = "Failed to build base builder image"
-            logger.error(msg)
-            raise BaseImageBuildFailure(msg)
+        with PodmanClient(base_url=self.podman_uri) as client:
+            try:
+                _, log = client.images.build(
+                    path=self._base_context_dir.absolute(),
+                    tag=self._base_image_tag,
+                    dockerfile=self._base_context_dir.absolute() / "Containerfile",
+                )
+            except BuildError as exc:
+                logger.exception(exc)
+                msg = "Builder image build failed"
+                raise BaseImageBuildFailure(msg) from exc
+            except APIError as exc:
+                logger.exception(exc)
+                msg = "Podman API service returned an error"
+                raise BaseImageBuildFailure(msg) from exc
+            else:
+                logger.info(log)
 
     def _image_exists(self, tag: str):
-        """Check that image exists for a given tag
+        """Check that image exists for a given tag.
+
+        Args:
+            tag: Image tag to check existence of.
 
         Returns:
-            ``True`` if the image is available, ``False`` otherwise
+            ``True`` if the image is available, ``False`` otherwise.
         """
 
-        o = subprocess.run(["podman", "image", "exists", tag])
-
-        if o.returncode == 0:
-            return True
-        else:
-            return False
+        with PodmanClient(base_url=self.podman_uri) as client:
+            try:
+                exists = client.images.exists(tag)
+            except RequestException as exc:
+                logger.exception(exc)
+                raise PodmanException from exc
+            else:
+                return exists
 
     def _base_image_build_needed(self):
-        """Check whether base image needs to be built
+        """Check whether base image needs to be built.
 
         Returns:
-            ``False`` if the image is available, ``True`` otherwise
+            ``False`` if the image is available, ``True`` otherwise.
         """
 
         return not self._image_exists(self._base_image_tag)
 
     def _builder_image_build_needed(self):
-        """Check whether builder image needs to be built
+        """Check whether builder image needs to be built.
 
         Returns:
-            ``False`` if the image is available, ``True`` otherwise
+            ``False`` if the image is available, ``True`` otherwise.
         """
 
         return not self._image_exists(self._builder_image_tag)
 
     def _create_builder_image(self):
-        """Create firmware builder image
+        """Create firmware builder image.
 
         Raises:
             BuilderImageBuildFailure: Raised if the image build fails.
 
         """
 
-        out = subprocess.run(
-            ["podman", "build", "-t", self._builder_image_tag, "."],
-            cwd=self._builder_context_dir.absolute(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        logger.info(out.stdout)
-
-        if out.returncode != 0:
-            msg = f"Failed to build builder image: {self._builder_image_tag}"
-            logger.error(msg)
-            raise BuilderImageBuildFailure(msg)
+        with PodmanClient(base_url=self.podman_uri) as client:
+            try:
+                _, log = client.images.build(
+                    path=self._builder_context_dir.absolute(),
+                    tag=self._builder_image_tag,
+                    dockerfile=self._builder_context_dir.absolute() / "Containerfile",
+                )
+            except BuildError as exc:
+                logger.exception(exc)
+                msg = "Builder image build failed"
+                raise BuilderImageBuildFailure(msg) from exc
+            except APIError as exc:
+                logger.exception(exc)
+                msg = "Podman API service returned an error"
+                raise BuilderImageBuildFailure(msg) from exc
+            else:
+                logger.info(log)
 
     def _build_firmware(
         self,
@@ -131,7 +156,7 @@ class PodmanBuilder(Builder):
         output_dir: Path,
         files_dir: Optional[Path] = None,
     ):
-        """Build firmware image
+        """Builds a firmware image.
 
         Args:
             build_cmd: The OpenWRT builder command line to build the firmware image.
@@ -144,33 +169,52 @@ class PodmanBuilder(Builder):
 
         """
 
-        podman_cmd = [
-            "podman",
-            "run",
-            "--rm",
-            "-v",
-            f"{output_dir.absolute()}:/openwrt/result:Z",
+        mounts = [
+            {
+                "type": "bind",
+                "source": f"{output_dir.absolute()}",
+                "target": "/openwrt/result",
+                "read_only": False,
+                "relabel": "Z",
+            },
         ]
 
         if files_dir is not None:
-            podman_cmd.extend(["-v", f"{files_dir.absolute()}:/openwrt/files:Z"])
+            mounts.append(
+                {
+                    "type": "bind",
+                    "source": f"{files_dir.absolute()}",
+                    "target": "/openwrt/files",
+                    "read_only": True,
+                    "relabel": "Z",
+                }
+            )
 
-        # build_cmd = ["ls"]
-        podman_cmd.extend(["-t", self._builder_image_tag])
+        with PodmanClient(base_url=self.podman_uri) as client:
+            logger.info(
+                f"Starting firmware build using image tag: {self._builder_image_tag}"
+            )
+            try:
+                out = client.containers.run(
+                    image=self._builder_image_tag,
+                    mounts=mounts,
+                    remove=True,
+                    stdout=True,
+                    stderr=True,
+                )
+            except ContainerError as exc:
+                logger.exception(exc)
+                msg = "Container exited with non-zero error code"
+                raise FirmwareBuildFailure(msg) from exc
+            except ImageNotFound as exc:
+                logger.exception(exc)
+                msg = "Image not found"
+                raise FirmwareBuildFailure(msg) from exc
+            except APIError as exc:
+                logger.exception(exc)
+                msg = "Podman API service returned an error"
+                raise FirmwareBuildFailure(msg) from exc
 
-        podman_cmd.extend(build_cmd)
-
-        logger.info(
-            f"Starting firmware build using image tag: {self._builder_image_tag}"
-        )
-        logger.info(f"Build command: {podman_cmd}")
-
-        out = subprocess.run(podman_cmd, capture_output=True, text=True)
-        logger.info(out.stdout)
-
-        if out.returncode != 0:
-            msg = "Firmware build failed"
-            logger.error(out.stdout)
-            logger.error(out.stderr)
-            logger.error(msg)
-            raise FirmwareBuildFailure(msg)
+        # Write stdout and stderr from running the container to log
+        for msg in out:
+            logger.info(msg)
