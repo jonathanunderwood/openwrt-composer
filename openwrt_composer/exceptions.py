@@ -1,33 +1,37 @@
-"""Custom Exceptions"""
+"""Custom Exceptions for OpenWRT Composer."""
 
 
-class FirmwareBuildFailure(Exception):
-    """Raised when a firmware build fails"""
+class OpenWRTComposerException(Exception):
+    """Top level exception for OpenWRT Composer exceptions."""
 
 
-class ImageBuildFailure(Exception):
-    """Raised when a container image build fails"""
+class FirmwareBuildFailure(OpenWRTComposerException):
+    """Raised when a firmware build fails."""
+
+
+class ImageBuildFailure(OpenWRTComposerException):
+    """Raised when a container image build fails."""
 
 
 class BaseImageBuildFailure(ImageBuildFailure):
-    """Raised when a base container image build fails"""
+    """Raised when a base container image build fails."""
 
 
 class BuilderImageBuildFailure(ImageBuildFailure):
-    """Raised when a firmware buider container image build fails"""
+    """Raised when a firmware buider container image build fails."""
 
 
-class ManifestError(Exception):
-    """Raised when an error is found with a manifest"""
+class ManifestError(OpenWRTComposerException):
+    """Raised when an error is found with a manifest."""
 
 
-class ImageBuilderRetrievalFailure(Exception):
-    """Raised when an attempt to retrieve an OpenWRT image builder fails"""
+class ImageBuilderRetrievalFailure(OpenWRTComposerException):
+    """Raised when an attempt to retrieve an OpenWRT image builder fails."""
 
 
-class ContextDirectoryCreationFailure(Exception):
-    """Raised when creating a context directory for an image build fails"""
+class ContextDirectoryCreationFailure(OpenWRTComposerException):
+    """Raised when creating a context directory for an image build fails."""
 
 
-class ConfigCreationError(Exception):
-    """Raised when an error occurs creating config files"""
+class ConfigCreationError(OpenWRTComposerException):
+    """Raised when an error occurs creating config files."""
