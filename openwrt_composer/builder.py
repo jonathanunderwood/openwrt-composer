@@ -8,9 +8,13 @@ from urllib.parse import urljoin
 
 import requests
 
-from .exceptions import ContextDirectoryCreationFailure, ImageBuilderRetrievalFailure
+from openwrt_composer.exceptions import (
+    ContextDirectoryCreationFailure,
+    ImageBuilderRetrievalFailure,
+)
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+logger.addHandler(logging.NullHandler())
 
 
 def _prepare_context_dir(
@@ -69,7 +73,7 @@ _ENTRYPOINT_SCRIPT_NAME: str = "entrypoint.sh"
 
 _BASE_CONTAINERFILE: str = textwrap.dedent(
     f"""\
-    FROM fedora:31
+    FROM fedora:37
     RUN dnf -y install \
       @c-development \
       @development-tools \
@@ -80,8 +84,9 @@ _BASE_CONTAINERFILE: str = textwrap.dedent(
       python2 \
       wget \
       xz \
-      time
-    RUN dnf clean all
+      rsync \
+      perl-FindBin \
+      time && dnf clean all
     COPY {_ENTRYPOINT_SCRIPT_NAME} /{_ENTRYPOINT_SCRIPT_NAME}
     RUN chmod 755 /{_ENTRYPOINT_SCRIPT_NAME}
     ENTRYPOINT ["/{_ENTRYPOINT_SCRIPT_NAME}"]
@@ -94,11 +99,15 @@ _BASE_IMAGE_TAG: str = "openwrt-composer-base"
 _BUILDER_CONTAINERFILE: str = textwrap.dedent(
     """\
     FROM openwrt-composer-base
-    WORKDIR /openwrt
-    ADD {archive_file} .
-    WORKDIR /openwrt/{archive_dir}
     COPY {entrypoint_script_name} /{entrypoint_script_name}
     RUN chmod 755 /{entrypoint_script_name}
+    RUN groupadd openwrt && useradd -g openwrt openwrt
+    RUN mkdir /openwrt && chown openwrt:openwrt /openwrt
+    WORKDIR /openwrt
+    COPY --chown=openwrt:openwrt {archive_file} .
+    USER openwrt
+    RUN tar -xf {archive_file}
+    WORKDIR /openwrt/{archive_dir}
     ENTRYPOINT ["/{entrypoint_script_name}"]
     CMD ["/bin/bash"]
     """  # noqa: E501
@@ -131,14 +140,14 @@ class Builder(ABC):
         work_dir: Path,
         openwrt_base_url: str,
     ) -> None:
-        self.version: str = version
-        self.target: str = target
-        self.sub_target: str = sub_target
-        self.profile: str = profile
-        self.work_dir: Path = work_dir
+        self.version = version
+        self.target = target
+        self.sub_target = sub_target
+        self.profile = profile
+        self.work_dir = work_dir
 
-        self._builder_image_tag: str = (
-            f"openwrt-builder-{version}-{target}-{sub_target}"  # noqa: E501
+        self._builder_image_tag = (
+            f"openwrt-composer-{version}-{target}-{sub_target}"  # noqa: E501
         )
         self._base_image_tag = _BASE_IMAGE_TAG
 
@@ -147,16 +156,16 @@ class Builder(ABC):
         else:
             self.openwrt_base_url: str = openwrt_base_url
 
-        self._archive_dir: str = (
+        self._archive_dir = (
             f"openwrt-imagebuilder-{version}-{target}-{sub_target}.Linux-x86_64"
         )
         self._archive_file = f"{self._archive_dir}.tar.xz"
-        self._base_context_dir: Path = self.work_dir / "base"
-        self._builder_context_dir: Path = (
+        self._base_context_dir = self.work_dir / "base"
+        self._builder_context_dir = (
             self.work_dir / self.version / self.target / self.sub_target
         )
-        self._base_containerfile: str = _BASE_CONTAINERFILE
-        self._builder_containerfile: str = _BUILDER_CONTAINERFILE.format(
+        self._base_containerfile = _BASE_CONTAINERFILE
+        self._builder_containerfile = _BUILDER_CONTAINERFILE.format(
             archive_file=self._archive_file,
             archive_dir=self._archive_dir,
             entrypoint_script_name=_ENTRYPOINT_SCRIPT_NAME,
@@ -292,12 +301,12 @@ class Builder(ABC):
         else:
             logger.info("Builder image found.")
 
-        firmware: str = (
+        firmware = (
             f"openwrt-{self.version}-{self.target}-{self.sub_target}-{self.profile}"
         )
         logger.info(f"Building firmware: {firmware}")
 
-        build_cmd: List[str] = [
+        build_cmd = [
             "make",
             "image",
             f"PROFILE={self.profile}",

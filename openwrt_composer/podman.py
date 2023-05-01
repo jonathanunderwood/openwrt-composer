@@ -1,11 +1,4 @@
 """Podman based container image builder"""
-# Unfortunately the Python podman bindings are broken and seemingly
-# unmaintained, so here we resort to calling the podman and buildah command
-# line tools. In the future, if the podman bindings become usable, we should
-# switch to using those.
-# https://github.com/containers/python-podman/issues/51
-# https://github.com/containers/python-podman/pull/60
-# https://github.com/varlink/python/issues/23
 
 import logging
 from pathlib import Path
@@ -22,11 +15,13 @@ from openwrt_composer.exceptions import (
     FirmwareBuildFailure,
     OpenWRTComposerException,
 )
+from openwrt_composer.schemas import PodmanUrl
 
-logger = logging.getLogger(__name__).addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 # FIXME: this is hard coded for now, but needs to be a configuration parameter
-uri = "unix:///run/user/1000/podman/podman.sock"
+# uri = "unix:///run/user/1000/podman/podman.sock"
 
 
 class PodmanException(OpenWRTComposerException):
@@ -50,6 +45,7 @@ class PodmanBuilder(Builder):
         profile: str,
         work_dir: Path,
         openwrt_base_url: str,
+        podman_uri: PodmanUrl,
     ):
         super().__init__(
             version=version,
@@ -59,7 +55,7 @@ class PodmanBuilder(Builder):
             work_dir=work_dir,
             openwrt_base_url=openwrt_base_url,
         )
-        self.podman_uri = uri
+        self.podman_uri = podman_uri
 
     def _create_base_image(self):
         """Create base image for all firmware builder images
@@ -201,10 +197,14 @@ class PodmanBuilder(Builder):
                     remove=True,
                     stdout=True,
                     stderr=True,
+                    userns_mode="keep-id",
+                    command=build_cmd,
                 )
             except ContainerError as exc:
                 logger.exception(exc)
                 msg = "Container exited with non-zero error code"
+                for msg in exc.stderr:
+                    logger.error(msg)
                 raise FirmwareBuildFailure(msg) from exc
             except ImageNotFound as exc:
                 logger.exception(exc)
@@ -218,3 +218,4 @@ class PodmanBuilder(Builder):
         # Write stdout and stderr from running the container to log
         for msg in out:
             logger.info(msg)
+        logger.info(build_cmd)
