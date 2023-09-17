@@ -22,8 +22,7 @@ flake8 = "^6.0.0"
 isort = "^5.10.1"
 
 [tool.poetry.scripts]
-owc = 'openwrt_composer.main:build'
-owc2 = 'openwrt_composer.cli:app'
+owc = 'openwrt_composer.cli:app'
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.1"
