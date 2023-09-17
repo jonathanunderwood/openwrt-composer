@@ -20,9 +20,6 @@ from openwrt_composer.schemas import PodmanUrl
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-# FIXME: this is hard coded for now, but needs to be a configuration parameter
-# uri = "unix:///run/user/1000/podman/podman.sock"
-
 
 class PodmanException(OpenWRTComposerException):
     """Raised when a Podman operation fails."""
@@ -53,9 +50,9 @@ class PodmanBuilder(Builder):
             sub_target=sub_target,
             profile=profile,
             work_dir=work_dir,
-            openwrt_base_url=openwrt_base_url,
+            openwrt_base_url=str(openwrt_base_url),
         )
-        self.podman_uri = podman_uri
+        self.podman_uri = str(podman_uri)
 
     def _create_base_image(self):
         """Create base image for all firmware builder images
@@ -198,6 +195,7 @@ class PodmanBuilder(Builder):
                     stdout=True,
                     stderr=True,
                     userns_mode="keep-id",
+                    stream=True,
                     command=build_cmd,
                 )
             except ContainerError as exc:
@@ -217,5 +215,4 @@ class PodmanBuilder(Builder):
 
         # Write stdout and stderr from running the container to log
         for msg in out:
-            logger.info(msg)
-        logger.info(build_cmd)
+            logger.info(msg.decode("utf-8").strip('\r\n').strip('\n'))

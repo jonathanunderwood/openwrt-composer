@@ -2,9 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import AnyUrl, BaseModel, BaseSettings, HttpUrl
+from pydantic import AnyUrl, BaseModel, HttpUrl, UrlConstraints
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from openwrt_composer.exceptions import ConfigCreationError
 
@@ -85,7 +86,7 @@ class FirmwareSpecification(BaseModel):
     sub_target: str
     profile: str
     version: str
-    extra_name: Optional[str]
+    extra_name: Optional[str] = None
     packages: Optional[PackagesSpec] = None
     files: Optional[list[FileContentsSpec]] = None
 
@@ -109,22 +110,16 @@ class Firmware(BaseModel):
     firmware: FirmwareSpecification
 
 
-class PodmanUrl(AnyUrl):
-    host_required = False
+PodmanUrl = Annotated[AnyUrl, UrlConstraints(host_required=False)]
 
 
 class PodmanConfig(BaseModel):
-    uri: PodmanUrl = "unix:///run/user/1000/podman/podman.sock"  # type:ignore
+    uri: PodmanUrl = PodmanUrl("unix:///run/user/1000/podman/podman.sock")
 
 
 class Config(BaseSettings):
     container_engine: Literal["podman", "docker"] = "podman"
-    # Type checkers will complain about setting these from a
-    # literal, but this will be fixed in Pydantic 2.0. See:
-    # https://github.com/pydantic/pydantic/issues/1684
-    openwrt_base_url: HttpUrl = "https://downloads.openwrt.org/"  # type:ignore
+    openwrt_base_url: HttpUrl = HttpUrl("https://downloads.openwrt.org/")
     work_dir: Optional[Path] = None
     podman: Optional[PodmanConfig] = None
-
-    class Config:
-        env_prefix = "OPENWRT_COMPOSER_"
+    model_config = SettingsConfigDict(env_prefix="OPENWRT_COMPOSER_")
