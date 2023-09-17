@@ -15,13 +15,13 @@ from openwrt_composer.podman import PodmanBuilder
 from openwrt_composer.schemas import Config, Firmware
 
 LOG_LEVELS = {
-    'none': logging.CRITICAL + 1,
-    'critical': logging.CRITICAL,
-    'error': logging.ERROR,
-    'warn': logging.WARNING,
-    'warning': logging.WARNING,
-    'info': logging.INFO,
-    'debug': logging.DEBUG,
+    "none": logging.CRITICAL + 1,
+    "critical": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
 }
 
 LOG_FORMAT = "%(message)s"

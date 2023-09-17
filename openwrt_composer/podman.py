@@ -215,4 +215,4 @@ class PodmanBuilder(Builder):
 
         # Write stdout and stderr from running the container to log
         for msg in out:
-            logger.info(msg.decode("utf-8").strip('\r\n').strip('\n'))
+            logger.info(msg.decode("utf-8").strip("\r\n").strip("\n"))
