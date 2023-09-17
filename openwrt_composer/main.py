@@ -40,7 +40,7 @@ def load_yaml_file(filename: str) -> dict:
             logger.debug(f"Contents:")
             logger.debug(f"{d}")
     except IOError as exc:
-        logger.excception(
+        logger.exception(
             "I/O error({0}) loading {1}: {2}".format(exc.errno, filename, exc.strerror)
         )
         raise exc
@@ -94,13 +94,19 @@ def valid_manifest(manifest: dict) -> bool:
 
 
 def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
-    """Write files to disk for firmware building
+    """Write files to disk as a tree for firmware building.
+
+    This function processes a list of dictionaries, each entry of
+    which specifies the path and contents of a file, and creates the
+    corresponding directory tree and file contents on disk at a specified
+    location. This directory tree can then be added to a firmware build.
 
     Args:
-        files: A list of dictionaries. Each list item must have a ``path`` key and
-            a ``contents`` key. The ``path`` key defines where in the firmware
-            image the file should be placed. The ``contents`` key specifies the
-            contents of the file.
+        files: A list of dictionaries. Each list item must have a ``path`` key
+            and a ``contents`` key. The ``path`` key defines where in the
+            firmware image the file should be placed. The ``contents`` key
+            specifies the contents of the file.
+        files_dir: Location to write the files and directory tree to.
 
     Returns:
         The Path to the directory containing the files.
@@ -108,8 +114,8 @@ def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
     Raises:
         KeyError: Raised if a files dict is missing a key.
         IOError: Raised if an error occurs creating a file.
-        ConfigCreationError: Raised if `files_dir` does not exist, of if a file that
-            would be created already exists.
+        ConfigCreationError: Raised if `files_dir` does not exist, of if a file
+            that would be created already exists.
 
     """
 
@@ -149,12 +155,12 @@ def create_files(files: List[Dict[str, str]], files_dir: Path) -> None:
             raise
 
 
-def create_package_list(packages: Dict[str, List]) -> str:
-    """Create packages list suitable for building firmware image
+def create_package_list(packages: Dict[str, list[str]]) -> str:
+    """Create packages list suitable for building firmware image.
 
     Args:
-        packages: A dictionary with two keys: ``add`` and ``remove``. The value of
-            both is a list of package names as strings.
+        packages: A dictionary with two keys: ``add`` and ``remove``. The value
+            of both is a list of package names as strings.
 
     Returns:
         A string with all package names from the ``add`` list, and all packages
@@ -173,12 +179,10 @@ def create_package_list(packages: Dict[str, List]) -> str:
         # The section is empty, so set to empty list
         packages_remove = []
 
-    packages_list: List[str] = packages_add + [
-        "-{0}".format(pkg) for pkg in packages_remove
-    ]
-    packages: str = " ".join(packages_list)
+    packages_list: List[str] = packages_add + [f"-{pkg}" for pkg in packages_remove]
+    packages_str = " ".join(packages_list)
 
-    return packages
+    return packages_str
 
 
 @click.command()
