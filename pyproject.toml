@@ -8,7 +8,6 @@ authors = ["Jonathan G. Underwood <jonathan.underwood@gmail.com>"]
 python = "^3.11"
 "ruamel.yaml" = "^0.17.32"
 requests = "^2.31.0"
-netjsonconfig = "^1.0.2"
 podman = "^4.6.0"
 typer = {extras = ["all"], version = "^0.9.0"}
 pydantic = "^2.3.0"
