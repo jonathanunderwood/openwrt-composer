@@ -73,7 +73,7 @@ _ENTRYPOINT_SCRIPT_NAME: str = "entrypoint.sh"
 
 _BASE_CONTAINERFILE: str = textwrap.dedent(
     f"""\
-    FROM fedora:37
+    FROM fedora:39
     RUN dnf -y install \
       @c-development \
       @development-tools \
